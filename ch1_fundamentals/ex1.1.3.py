@@ -4,15 +4,53 @@
 # Needed to get command line arguments
 import sys 
 
-def check_args(args):
-    ''' 
-    Checks the arguments passed into program
-    INPUT: List of arguments
-    RETURNS: Boolean showing if arguments are good
+def main(argv=None):
     '''
-    if (len(args) != 3):
-        return False
+    Function called to run main script including unit tests
+    INPUT: List of arguments from the command line
+    RETURNS: Exit code to be passed to sys.exit():
+        -1: Invalid input
+         0: Script completed successfully
+    '''
+    
+    if argv is None:
+        argv = sys.argv
+    
+    options = argv[1:]
+    
+    return check_and_compare_opts(options)
 
+def check_and_compare_opts(options):
+    '''
+    Checks options are integers, and compares them if so.
+    INPUT: List of options
+    RETURNS: None if options aren't 3 integers, 
+             False/True otherwise depending on comparison
+    '''
+    
+    int_options = convert_args(options)
+
+    if int_options is None or len(int_options) != 3:
+        print('Error - need 3 integer arguments, got {}'.format(options))
+        return -1
+    
+    if check_equal(int_options):
+        print('equal')
+        return 0
+    else:
+        print('not equal')
+        return 0
+
+def list_contains_ints(vals):
+    '''
+    Checks if all elements in a list contains ints
+    INPUT: list of arbitrary lengths
+    RETURNS: bool showing whether all values are ints
+    '''
+    for val in vals:
+        if type(val) is not int:
+            return False
+            
     return True
 
 def convert_args(args):
@@ -24,41 +62,25 @@ def convert_args(args):
     try:
         arg_ints = [int(arg) for arg in args]
     except:
-        print('Error converting {} to integer'.format(args))
-        return [None]
-        
+        # print('Error converting {} to integer'.format(args))
+        return None
+    
     return arg_ints
-
 
 def check_equal(vals):
     '''
-    Checks if all the values are equal
+    Checks if all the values are equal (assumes list of ints)
     INPUT: List of integer values
     RETURNS: Boolean when all values are equal
     '''
+    first_val = vals[0]
     
-    int_vals = convert_args(vals)
-    
-    first_val = int_vals[0]
-    if first_val is None:
-        return False
-    
-    for val in int_vals:
+    for val in vals:
         if first_val != val:
             return False
-            
+        
     return True
 
 if __name__ == '__main__':
-    args = sys.argv[1:]
-    
-    if not check_args(args):
-        print('Error - need 3 integer arguments, got {}'.format(args))
-    
-    else:
-        if check_equal(args):
-            print('equal')
-        else:
-            print('not equal')
-    
+    sys.exit(main())
     
