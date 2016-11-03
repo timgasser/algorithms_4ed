@@ -81,6 +81,20 @@ def check_equal(vals):
         
     return True
 
+def check_equal_recurse(vals):
+    '''
+    Checks if all the values are equal (assumes list of ints)
+    INPUT: List of integer values
+    RETURNS: Boolean when all values are equal
+    '''
+    
+    if len(vals) == 2:
+        return vals[0] == vals[1]
+    else:
+        return check_equal_recurse()
+    
+
+
 if __name__ == '__main__':
     sys.exit(main())
     

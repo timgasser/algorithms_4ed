@@ -19,7 +19,11 @@ aren't covered in the code itself should be found in here.
 1.1.2 c) True, boolean.
 1.1.2 d) '33', string
 
-1.1.3 
+1.1.3 See example code
+1.1.5 See example code
+1.1.6 0, 1, 0, etc
+
+1.1.11 See example code
 
 ### 1.2 Data Abstraction
 
