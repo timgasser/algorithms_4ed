@@ -27,6 +27,16 @@ aren't covered in the code itself should be found in here.
 
 ### 1.2 Data Abstraction
 
+* Classes are different to static modules in Python:
+    * Classes have a constructor, using same name as class with no return values
+    * Some instance methods are present to adhere to Python's conventions, for
+      example toString() is the same as __str__(self):
+
+* Objects are characterized by 3 properties
+    * State: value from its data type
+    * Identity: Distinguishes one object from another
+    * Behaviour: Effect of data-type operations
+
 ### 1.3 Bags, Queues, and Stacks
 
 ### 1.4 Analysis of Algorithms
