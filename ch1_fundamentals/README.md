@@ -49,4 +49,7 @@ aren't covered in the code itself should be found in here.
 
 ### 1.5 Case Study: Union Find
 
+* Initially all sites are stored in a component with the same ID.
+* 
+
 
