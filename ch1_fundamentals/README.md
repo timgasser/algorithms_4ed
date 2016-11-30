@@ -39,6 +39,12 @@ aren't covered in the code itself should be found in here.
 
 ### 1.3 Bags, Queues, and Stacks
 
+* Aims of the section
+    * Design ADTs for Bags, Queues, and Stacks. These are collections.
+    * Introduce generics (not relevant in Python) and iteration
+    * Show importance of linked data structures (e.g. linked lists)
+    * 
+
 ### 1.4 Analysis of Algorithms
 
 ### 1.5 Case Study: Union Find
