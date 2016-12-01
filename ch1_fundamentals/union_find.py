@@ -222,6 +222,84 @@ class QuickFindUnionFind(BookUnionFind):
                 if line_count == 1:
                     self.N = int(line)
                     self.id = list(range(self.N))
+                    # print('Read init line to create {} sites'.format(self.N))
+                else:
+                    # Read in the line, strip space and convert to integer 
+                    # print('Read Line #{} with sites: {}'.format(line_count, line))
+                    sites = line.split(' ')
+                    sites = [int(site.strip()) for site in sites]
+                    p, q = sites
+                    if not self.connected(p, q):
+                        self.union(p, q)
+
+    def __repr__(self):
+        return '{}'.format(self.id)
+
+    def union(self, p, q):
+        '''
+        Merge components if two sites are in different components 
+        INPUT: Site identifiers p and q
+        RETURNS: None
+        '''
+        # print('Union of sites {} and {}'.format(p, q))
+        p_comp = self.id[p] # 1 array access
+        q_comp = self.id[q] # 1 array access
+        # list comprehension does min: N + 1, max: N + N - 1 = 2N-1
+        self.id = [q_comp if val == p_comp else val for val in self.id]
+        # print('self.id: {}'.format(self.id))
+        
+    def find(self, p):
+        '''
+        Component identifier for p
+          -> Implement this in subclass
+        INPUT: Site p
+        RETURNS: Component ID
+        '''
+        # print('Find of site {} = {}'.format(p, self.id[p]))
+        # print(self.id)
+        return self.id[p] # 1 array access
+        
+    def connected(self, p, q):
+        '''
+        Returns True if p and q are in the same component
+        INPUT: Nodes p and q
+        RETURNS: Boolean showing if the nodes are connected
+        '''
+        # print('Super connected for {} and {}'.format(p, q))
+        return self.find(p) == self.find(q) # 2 array accesses
+
+    def count(self):
+        '''
+        Returns number of components (not sites)
+        INPUT: 
+        RETURNS: Integer with number of components
+        '''
+        # print('Super count returning {}'.format(self.N))
+        return self.N
+
+class QuickUnionUnionFind(BookUnionFind):
+    ''' Quick Union invariant:
+    Maintains invariant that components share the same root site
+    id[] array entry is a link to another site in same component
+    - Can link to itself, in which case it's a root
+    When creating union, add link from id[p] to id[q]
+    '''
+    def __init__(self, filename=None):
+        '''
+        Initializes structure from file
+        '''
+        if filename is None:
+            filename = DEF_FILE
+        
+        line_count = 0
+        with open(filename, 'r') as f:
+            for line in f:
+                line_count += 1
+                
+                # Create new Union-Find using N on first line of file
+                if line_count == 1:
+                    self.N = int(line)
+                    self.id = list(range(self.N))
                     print('Read init line to create {} sites'.format(self.N))
                 else:
                     # Read in the line, strip space and convert to integer 
@@ -232,6 +310,24 @@ class QuickFindUnionFind(BookUnionFind):
                     if not self.connected(p, q):
                         self.union(p, q)
 
+    def __repr__(self):
+        return '{}'.format(self.id)
+    
+    def find_root(self, p):
+        ''' Helper function to follow links until root site found.
+        Note by definition a root is an entry in the id list whose val == idx
+        INPUT: Site identifier p
+        RETURNS: Root site 
+        '''
+        print('Finding Root for site idx {}, ids = {}'.format(p, self.id))
+        p_idx = p
+        while self.id[p_idx] != p_idx:
+            print(' * {} -> {}'.format(p_idx, self.id[p_idx]))
+            p_idx = self.id[p_idx]
+        
+        print('Found Root site: {} for {}'.format(p_idx, p))
+        return p_idx
+
     def union(self, p, q):
         '''
         Merge components if two sites are in different components 
@@ -239,8 +335,13 @@ class QuickFindUnionFind(BookUnionFind):
         RETURNS: None
         '''
         print('Union of sites {} and {}'.format(p, q))
-        self.id = [self.id[q] if val == self.id[p] else val for idx, val in enumerate(self.id)]
-        print('self.id: {}'.format(self.id))
+
+        p_root = self.find_root(p)
+        q_root = self.find_root(q)
+
+        print('Union pre  self.id: {}'.format(self.id))
+        self.id[p_root] = q_root
+        print('Union post self.id: {}'.format(self.id))
         
     def find(self, p):
         '''
@@ -250,8 +351,11 @@ class QuickFindUnionFind(BookUnionFind):
         RETURNS: Component ID
         '''
         print('Find of site {} = {}'.format(p, self.id[p]))
-        # print(self.id)
-        return self.id[p]
+        print(self.id)
+        
+        p_root = self.find_root(p)
+        print('Found root of {} at {}'.format(p, p_root))
+        return p_root
         
     def connected(self, p, q):
         '''
@@ -259,8 +363,8 @@ class QuickFindUnionFind(BookUnionFind):
         INPUT: Nodes p and q
         RETURNS: Boolean showing if the nodes are connected
         '''
-        print('Super connected for {} and {}'.format(p, q))
-        return self.find(p) == self.find(q)
+        # print('Super connected for {} and {}'.format(p, q))
+        return self.find(p) == self.find(q) # 2 array accesses
 
     def count(self):
         '''
@@ -268,13 +372,133 @@ class QuickFindUnionFind(BookUnionFind):
         INPUT: 
         RETURNS: Integer with number of components
         '''
-        print('Super count returning {}'.format(self.N))
+        # print('Super count returning {}'.format(self.N))
         return self.N
+
+class WeightedQuickUnionUnionFind(BookUnionFind):
+    ''' Weighted Quick Union invariant:
+    Maintains invariant that components share the same root site
+    id[] array entry is a link to another site in same component
+    sz[] array tracks size of root nodes
+    - Can link to itself, in which case it's a root
+    When creating union, always update site to point from smallest to largest tree
+    '''
+    def __init__(self, filename=None):
+        '''
+        Initializes structure from file
+        '''
+        if filename is None:
+            filename = DEF_FILE
         
+        line_count = 0
+        with open(filename, 'r') as f:
+            for line in f:
+                line_count += 1
+                
+                # Create new Union-Find using N on first line of file
+                if line_count == 1:
+                    self.N = int(line)
+                    self.id = list(range(self.N))
+                    self.sz = [1 for _ in range(self.N)]
+                    print('Read init line to create {} sites'.format(self.N))
+                else:
+                    # Read in the line, strip space and convert to integer 
+                    print('Read Line #{} with sites: {}'.format(line_count, line))
+                    sites = line.split(' ')
+                    sites = [int(site.strip()) for site in sites]
+                    p, q = sites
+                    if not self.connected(p, q):
+                        self.union(p, q)
+
+    def __repr__(self):
+        return '{}'.format(self.id)
     
-def test_quickfind():
-    quick_find = QuickFindUnionFind()
+    def find_root(self, p):
+        ''' Helper function to follow links until root site found.
+        Note by definition a root is an entry in the id list whose val == idx
+        INPUT: Site identifier p
+        RETURNS: Root site 
+        '''
+        print('Finding Root for site idx {}, ids = {}'.format(p, self.id))
+        p_idx = p
+        while self.id[p_idx] != p_idx:
+            print(' * {} -> {}'.format(p_idx, self.id[p_idx]))
+            p_idx = self.id[p_idx]
+        
+        print('Found Root site: {} for {}'.format(p_idx, p))
+        return p_idx
+
+    def union(self, p, q):
+        '''
+        Merge components if two sites are in different components 
+        INPUT: Site identifiers p and q
+        RETURNS: None
+        '''
+        print('Union of sites {} and {}'.format(p, q))
+
+        p_root = self.find_root(p)
+        q_root = self.find_root(q)
+
+        print('Union pre  self.id: {}'.format(self.id))
+        # This is where the magic weighting happens
+        # self.id[p_root] = q_root<- standard quick-union
+        if self.sz[p_root] < self.sz[p_root]:
+            self.id[p_root] = q_root
+            self.sz[p_root] += self.sz[q_root]
+        else:
+            self.id[q_root] = p_root
+            self.sz[q_root] += self.sz[p_root]
+            
+        print('Union post self.id: {}'.format(self.id))
+        
+    def find(self, p):
+        '''
+        Component identifier for p
+          -> Implement this in subclass
+        INPUT: Site p
+        RETURNS: Component ID
+        '''
+        print('Find of site {} = {}'.format(p, self.id[p]))
+        print(self.id)
+        
+        p_root = self.find_root(p)
+        print('Found root of {} at {}'.format(p, p_root))
+        return p_root
+        
+    def connected(self, p, q):
+        '''
+        Returns True if p and q are in the same component
+        INPUT: Nodes p and q
+        RETURNS: Boolean showing if the nodes are connected
+        '''
+        # print('Super connected for {} and {}'.format(p, q))
+        return self.find(p) == self.find(q) # 2 array accesses
+
+    def count(self):
+        '''
+        Returns number of components (not sites)
+        INPUT: 
+        RETURNS: Integer with number of components
+        '''
+        # print('Super count returning {}'.format(self.N))
+        return self.N
+
+    
+def test_tinyUF():
+    tiny_file = 'data/tinyUF.txt'
+    
+    quick_find = QuickFindUnionFind(tiny_file)
+    print('Quick-find result: {}'.format(quick_find))
     assert quick_find.id == [1,1,1,8,8,1,1,1,8,8]
+
+    union_find = QuickUnionUnionFind(tiny_file)
+    print('Union-find result: {}'.format(union_find))
+    assert union_find.id == [1,1,1,8,3,0,5,1,8,8]
+
+    union_find = WeightedQuickUnionUnionFind(tiny_file)
+    print('Union-find result: {}'.format(union_find))
+    assert union_find.id == [1,1,1,8,3,0,5,1,8,8]
+
 
 def test_naive_union_find(filename=None):
     
@@ -311,7 +535,7 @@ def main(argv=None):
     '''
     # print(timeit.repeat(test_naive_union_find, number=1000))
 
-    test_quickfind()
+    test_tinyUF()
     
     return 0
         
