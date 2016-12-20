@@ -5,135 +5,14 @@ import sys
 
 import timeit
 
-# Constants
-DATA_DIR = 'data'
-DEF_FILE = DATA_DIR + '/tinyUF.txt'
-
-class UnionFind(object):
-    ''' Abstract type for Union Find applications '''
-    def __init__(self, N):
-        '''
-        Initializes Union Find structure with N entries
-        '''
-        raise NotImplementedError()
-        
-    def union(self, p, q):
-        '''
-        Merge components if two sites are in different components
-        INPUT: Site identifiers p and q
-        RETURNS: None
-        '''
-        raise NotImplementedError()
-        
-    def find(self, p):
-        '''
-        Component identifier for p
-        INPUT: Site p
-        RETURNS: Component ID
-        '''
-        raise NotImplementedError()
-    
-    def connected(self, p, q):
-        '''
-        Returns True if p and q are in the same component
-        INPUT: Nodes p and q
-        RETURNS: Boolean showing if the nodes are connected
-        '''
-        raise NotImplementedError()
-
-    def count(self):
-        '''
-        Returns number of components (not sites)
-        INPUT: 
-        RETURNS: Integer with number of components
-        '''
-        raise NotImplementedError()
-        
-class NaiveUnionFind(UnionFind):
-    '''
-    My first stab at this, without checking the book implementations.
-    Uses a 2-level list structure for components -> sites
-    '''
-    def __init__(self, N):
-        # print('Creating Union Find with {} entries'.format(N))
-        self.components = list()
-
-    def __repr__(self):
-        rep = 'Printing Union Find with {} components:\n'.format(len(self.components))
-        for idx, comp in enumerate(self.components):
-            rep += 'Component: {}\n'.format(comp)
-        return rep
-
-    def union(self, p, q):
-        # print('Union of sites {} and {}'.format(p, q))
-        comp_p = self.find(p)
-        comp_q = self.find(q)
-        
-        if comp_p is not None:
-            comp_p_idx = self.components.index(comp_p)
-        
-        if comp_q is not None:
-            comp_q_idx = self.components.index(comp_q)
-
-        if comp_p is None and comp_q is None:
-            # print('Creating new component for sites {}, {}'.format(p, q))
-            self.components.append([p, q])
-            return
-            
-        if comp_p is None: # comp_q is not None, add p to q's component
-            self.components[comp_q_idx].append(p)
-            # print('Adding {} to {}\'s component -> {}'.format(p, q, self.components[comp_q_idx]))
-            return
-        
-        if comp_q is None: # comp_p is not None, add q to p's component
-            self.components[comp_p_idx].append(q)
-            # print('Adding {} to {}\'s component -> {}'.format(q, p, self.components[comp_p_idx]))
-            return 
-
-        if comp_p == comp_q:
-            # print('Skipping - {} and {} already in same component {}'.format(p, q, comp_p))
-            return
-        
-        # Collapse the two components into one (p for consistency)
-        # print('Combining {} and {}'.format(self.components[comp_p_idx], self.components[comp_q_idx]))
-        self.components[comp_p_idx].extend(self.components[comp_q_idx])
-        del self.components[comp_q_idx]
-        return
-
-    def find(self, p):
-        # print('Find of site {}'.format(p))
-
-        for comp in self.components:
-            if p in comp:
-                print('Found! In {}'.format(comp))
-                return comp
-        
-        # print('Not Found!')
-        return None
-
-    def connected(self, p, q):
-        # print('Connected for sites {} and {}'.format(p, q))
-        if self.find(p) == self.find(q):
-            return True
-        
-        return False
-
-    def count(self):
-        # print('Count called')
-        return len(self.components)
-
-class BookUnionFind(UnionFind):
+class UnionFindBase(object):
     ''' Superclass with common functionality of all Union Find algos in book'''
-    def __init__(self, N):
+    def __init__(self, filename=None):
         '''
-        Initializes Union Find structure with N entries
+        Initializes Union Find structure 
         '''
-        # The site number is implicitly stored as the self.id index
-        print('Super init: N = {}'.format(N))
-        self.N = N # Call this N to avoid namespace clash with count function
-        self.id = list(range(N))
-        
-        print('Super init: N = {}, id = {}'.format(self.N, self.id))
+        if filename is not None:
+            self.load_file(filename)
         
     def union(self, p, q):
         '''
@@ -159,7 +38,7 @@ class BookUnionFind(UnionFind):
         INPUT: Nodes p and q
         RETURNS: Boolean showing if the nodes are connected
         '''
-        print('Super connected for {} and {}'.format(p, q))
+        # print('Super connected for {} and {}'.format(p, q))
         return self.find(p) == self.find(q)
 
     def count(self):
@@ -168,71 +47,62 @@ class BookUnionFind(UnionFind):
         INPUT: 
         RETURNS: Integer with number of components
         '''
-        print('Super count returning {}'.format(self.N))
+        # print('Super count returning {}'.format(self.N))
         return self.N
         
-    @classmethod
-    def create_from_file(cls, filename=None):
-        if filename is None:
-            filename = DEF_FILE
-        
+    def load_file(self, filename):
+        '''
+        Load data in file into union-find structure
+        INPUT: string with filename to be loaded
+        RETURNS: Nothing
+        '''
+        assert filename is not None, 'Error - please specify a file to load'
+
         line_count = 0
-        with open(filename, 'r') as f:
-            for line in f:
-                line_count += 1
-                
-                # Create new Union-Find using N on first line of file
-                if line_count == 1:
-                    N = int(line)
-                    print('Read init line to create {} sites'.format(N))
-                    new_class = cls(N)
-                else:
-                    # Read in the line, strip space and convert to integer 
-                    print('Read Line #{} with sites: {}'.format(line_count, line))
-                    sites = line.split(' ')
-                    sites = [int(site.strip()) for site in sites]
-                    p, q = sites
-                    print('Sites {} and {} connected? {}'.format(p, q, new_class.connected(p, q)))
-                    # if not new_class.connected(p, q):
-                    #     new_class.union(p, q)
-
-        print('File {}\nUnion-Find:\n{}'.format(filename, new_class))
-        return new_class
-
-class QuickFindUnionFind(BookUnionFind):
+        try:
+            with open(filename, 'r') as f:
+                for line in f:
+                    line_count += 1
+                    
+                    # Create new Union-Find using N on first line of file
+                    if line_count == 1:
+                        N = int(line)
+                        self.N = N
+                        self.id = list(range(N))
+                        # print('Creating Union find with {} sites'.format(self.N))
+    
+                    else:
+                        # Read in the line, strip space and convert to integer 
+                        # print('Read Line #{} with sites: {}'.format(line_count, line))
+                        sites = line.split(' ')
+                        sites = [int(site.strip()) for site in sites]
+                        p, q = sites
+                        # print('Sites {} and {} connected? {}'.format(p, q, self.connected(p, q)))
+                        if not self.connected(p, q):
+                            self.union(p, q)
+        except IOError as e:
+            print('Error opening file - {}'.format(e))
+            
+class QuickFind(UnionFindBase):
     ''' Quick Find invariant:
     `p` and `q` are connected iff id[p] == id[q].
     All sites in the same component must have the same value in the id list
     When creating union, change all values in id[p] to id[q]
     '''
     def __init__(self, filename=None):
-        '''
-        Initializes Union Find structure from file
-        '''
-        if filename is None:
-            filename = DEF_FILE
-        
-        line_count = 0
-        with open(filename, 'r') as f:
-            for line in f:
-                line_count += 1
-                
-                # Create new Union-Find using N on first line of file
-                if line_count == 1:
-                    self.N = int(line)
-                    self.id = list(range(self.N))
-                    # print('Read init line to create {} sites'.format(self.N))
-                else:
-                    # Read in the line, strip space and convert to integer 
-                    # print('Read Line #{} with sites: {}'.format(line_count, line))
-                    sites = line.split(' ')
-                    sites = [int(site.strip()) for site in sites]
-                    p, q = sites
-                    if not self.connected(p, q):
-                        self.union(p, q)
+        super(QuickFind, self).__init__(filename)
 
     def __repr__(self):
         return '{}'.format(self.id)
+
+    def connected(self, p, q):
+        return super(QuickFind, self).connected(p, q)
+
+    def count(self):
+        return super(QuickFind, self).count()
+
+    def load_file(self, filename=None):
+        super(QuickFind, self).load_file(filename)
 
     def union(self, p, q):
         '''
@@ -240,12 +110,10 @@ class QuickFindUnionFind(BookUnionFind):
         INPUT: Site identifiers p and q
         RETURNS: None
         '''
-        # print('Union of sites {} and {}'.format(p, q))
         p_comp = self.id[p] # 1 array access
         q_comp = self.id[q] # 1 array access
-        # list comprehension does min: N + 1, max: N + N - 1 = 2N-1
+        # list comp accesses: ~2N (1 to read value, w/c 1 to write back)
         self.id = [q_comp if val == p_comp else val for val in self.id]
-        # print('self.id: {}'.format(self.id))
         self.N -= 1
         
     def find(self, p):
@@ -255,29 +123,9 @@ class QuickFindUnionFind(BookUnionFind):
         INPUT: Site p
         RETURNS: Component ID
         '''
-        # print('Find of site {} = {}'.format(p, self.id[p]))
-        # print(self.id)
         return self.id[p] # 1 array access
-        
-    def connected(self, p, q):
-        '''
-        Returns True if p and q are in the same component
-        INPUT: Nodes p and q
-        RETURNS: Boolean showing if the nodes are connected
-        '''
-        # print('Super connected for {} and {}'.format(p, q))
-        return self.find(p) == self.find(q) # 2 array accesses
 
-    def count(self):
-        '''
-        Returns number of components (not sites)
-        INPUT: 
-        RETURNS: Integer with number of components
-        '''
-        # print('Super count returning {}'.format(self.N))
-        return self.N
-
-class QuickUnionUnionFind(BookUnionFind):
+class QuickUnion(UnionFindBase):
     ''' Quick Union invariant:
     Maintains invariant that components share the same root site
     id[] array entry is a link to another site in same component
@@ -285,33 +133,19 @@ class QuickUnionUnionFind(BookUnionFind):
     When creating union, add link from id[p] to id[q]
     '''
     def __init__(self, filename=None):
-        '''
-        Initializes structure from file
-        '''
-        if filename is None:
-            filename = DEF_FILE
-        
-        line_count = 0
-        with open(filename, 'r') as f:
-            for line in f:
-                line_count += 1
-                
-                # Create new Union-Find using N on first line of file
-                if line_count == 1:
-                    self.N = int(line)
-                    self.id = list(range(self.N))
-                    print('Read init line to create {} sites'.format(self.N))
-                else:
-                    # Read in the line, strip space and convert to integer 
-                    print('Read Line #{} with sites: {}'.format(line_count, line))
-                    sites = line.split(' ')
-                    sites = [int(site.strip()) for site in sites]
-                    p, q = sites
-                    if not self.connected(p, q):
-                        self.union(p, q)
+        super(QuickUnion, self).__init__(filename)
 
     def __repr__(self):
         return '{}'.format(self.id)
+
+    def connected(self, p, q):
+        return super(QuickUnion, self).connected(p, q)
+
+    def count(self):
+        return super(QuickUnion, self).count()
+
+    def load_file(self, filename=None):
+        super(QuickUnion, self).load_file(filename)
     
     def find_root(self, p):
         ''' Helper function to follow links until root site found.
@@ -319,13 +153,9 @@ class QuickUnionUnionFind(BookUnionFind):
         INPUT: Site identifier p
         RETURNS: Root site 
         '''
-        print('Finding Root for site idx {}, ids = {}'.format(p, self.id))
         p_idx = p
         while self.id[p_idx] != p_idx:
-            print(' * {} -> {}'.format(p_idx, self.id[p_idx]))
             p_idx = self.id[p_idx]
-        
-        print('Found Root site: {} for {}'.format(p_idx, p))
         return p_idx
 
     def union(self, p, q):
@@ -334,14 +164,9 @@ class QuickUnionUnionFind(BookUnionFind):
         INPUT: Site identifiers p and q
         RETURNS: None
         '''
-        print('Union of sites {} and {}'.format(p, q))
-
         p_root = self.find_root(p)
         q_root = self.find_root(q)
-
-        print('Union pre  self.id: {}'.format(self.id))
         self.id[p_root] = q_root
-        print('Union post self.id: {}'.format(self.id))
         self.N -= 1
         
     def find(self, p):
@@ -351,82 +176,41 @@ class QuickUnionUnionFind(BookUnionFind):
         INPUT: Site p
         RETURNS: Component ID
         '''
-        print('Find of site {} = {}'.format(p, self.id[p]))
-        print(self.id)
-        
         p_root = self.find_root(p)
-        print('Found root of {} at {}'.format(p, p_root))
         return p_root
-        
-    def connected(self, p, q):
-        '''
-        Returns True if p and q are in the same component
-        INPUT: Nodes p and q
-        RETURNS: Boolean showing if the nodes are connected
-        '''
-        # print('Super connected for {} and {}'.format(p, q))
-        return self.find(p) == self.find(q) # 2 array accesses
 
-    def count(self):
-        '''
-        Returns number of components (not sites)
-        INPUT: 
-        RETURNS: Integer with number of components
-        '''
-        # print('Super count returning {}'.format(self.N))
-        return self.N
-
-class WeightedQuickUnionUnionFind(BookUnionFind):
+class WeightedQuickUnion(UnionFindBase):
     ''' Weighted Quick Union invariant:
     Maintains invariant that components share the same root site
     id[] array entry is a link to another site in same component
     sz[] array tracks size of root nodes
     - Can link to itself, in which case it's a root
-    When creating union, always update site to point from smallest to largest tree
+    When creating union, always update site to point from smaller to larger tree
     '''
     def __init__(self, filename=None):
-        '''
-        Initializes structure from file
-        '''
-        if filename is None:
-            filename = DEF_FILE
+        # Need our own load_file to create size array before calling unions
+        self.load_file(filename)
         
-        line_count = 0
-        with open(filename, 'r') as f:
-            for line in f:
-                line_count += 1
-                
-                # Create new Union-Find using N on first line of file
-                if line_count == 1:
-                    self.N = int(line)
-                    self.id = list(range(self.N))
-                    self.sz = [1 for _ in range(self.N)]
-                    print('Read init line to create {} sites'.format(self.N))
-                else:
-                    # Read in the line, strip space and convert to integer 
-                    print('Read Line #{} with sites: {}'.format(line_count, line))
-                    sites = line.split(' ')
-                    sites = [int(site.strip()) for site in sites]
-                    p, q = sites
-                    if not self.connected(p, q):
-                        self.union(p, q)
-
     def __repr__(self):
         return '{}'.format(self.id)
-    
+
+    def connected(self, p, q):
+        return super(WeightedQuickUnion, self).connected(p, q)
+
+    def count(self):
+        return super(WeightedQuickUnion, self).count()
+
     def find_root(self, p):
         ''' Helper function to follow links until root site found.
         Note by definition a root is an entry in the id list whose val == idx
         INPUT: Site identifier p
         RETURNS: Root site 
         '''
-        print('Finding Root for site idx {}, ids = {}'.format(p, self.id))
         p_idx = p
         while self.id[p_idx] != p_idx:
-            print(' * {} -> {}'.format(p_idx, self.id[p_idx]))
+            # print(' * {} -> {}'.format(p_idx, self.id[p_idx]))
             p_idx = self.id[p_idx]
         
-        print('Found Root site: {} for {}'.format(p_idx, p))
         return p_idx
 
     def union(self, p, q):
@@ -435,25 +219,15 @@ class WeightedQuickUnionUnionFind(BookUnionFind):
         INPUT: Site identifiers p and q
         RETURNS: None
         '''
-        print('Union of sites {} and {}'.format(p, q))
-
         p_root = self.find_root(p)
         q_root = self.find_root(q)
 
-        print('Union pre  self.id: {}'.format(self.id))
-        # This is where the magic weighting happens
-        # self.id[p_root] = q_root<- standard quick-union
-        print('Size p root ({}) = {}, q root ({}) = {}'.format(p_root, self.sz[p_root],
-                                                               q_root, self.sz[q_root]))
         if self.sz[p_root] < self.sz[q_root]:
             self.id[p_root] = q_root
             self.sz[q_root] += self.sz[p_root]
         else:
             self.id[q_root] = p_root
             self.sz[p_root] += self.sz[q_root]
-            
-        print('Union post self.id: {}'.format(self.id))
-        print('Union post self.sz: {}'.format(self.sz))
         self.N -= 1
         
     def find(self, p):
@@ -463,92 +237,80 @@ class WeightedQuickUnionUnionFind(BookUnionFind):
         INPUT: Site p
         RETURNS: Component ID
         '''
-        print('Find of site {} = {}'.format(p, self.id[p]))
-        print(self.id)
-        
         p_root = self.find_root(p)
-        print('Found root of {} at {}'.format(p, p_root))
         return p_root
-        
-    def connected(self, p, q):
-        '''
-        Returns True if p and q are in the same component
-        INPUT: Nodes p and q
-        RETURNS: Boolean showing if the nodes are connected
-        '''
-        # print('Super connected for {} and {}'.format(p, q))
-        return self.find(p) == self.find(q) # 2 array accesses
 
-    def count(self):
+    def load_file(self, filename):
         '''
-        Returns number of components (not sites)
-        INPUT: 
-        RETURNS: Integer with number of components
+        Load data in file into union-find structure
+        INPUT: string with filename to be loaded
+        RETURNS: Nothing
         '''
-        # print('Super count returning {}'.format(self.N))
-        return self.N
+        assert filename is not None, 'Error - please specify a file to load'
 
-class PathCompressWeightedQuickUnionUnionFind(BookUnionFind):
-    ''' Weighted Quick Union invariant:
-    Maintains invariant that components share the same root site
-    id[] array entry is a link to another site in same component
-    sz[] array tracks size of root nodes
-    - Can link to itself, in which case it's a root
-    When creating union, always update site to point from smallest to largest tree
-    '''
-    def __init__(self, filename=None):
-        '''
-        Initializes structure from file
-        '''
-        if filename is None:
-            filename = DEF_FILE
-        
         line_count = 0
-        with open(filename, 'r') as f:
-            for line in f:
-                line_count += 1
-                
-                # Create new Union-Find using N on first line of file
-                if line_count == 1:
-                    self.N = int(line)
-                    self.id = list(range(self.N))
-                    self.sz = [1 for _ in range(self.N)]
-                    print('Read init line to create {} sites'.format(self.N))
-                else:
-                    # Read in the line, strip space and convert to integer 
-                    print('Read Line #{} with sites: {}'.format(line_count, line))
-                    sites = line.split(' ')
-                    sites = [int(site.strip()) for site in sites]
-                    p, q = sites
-                    if not self.connected(p, q):
-                        self.union(p, q)
+        try:
+            with open(filename, 'r') as f:
+                for line in f:
+                    line_count += 1
+                    
+                    # Create new Union-Find using N on first line of file
+                    if line_count == 1:
+                        N = int(line)
+                        self.N = N
+                        self.id = list(range(N))
+                        self.sz = [1 for _ in range(self.N)] # Weighing needs a size array too
+                        # print('Creating Union find with {} sites'.format(self.N))
+    
+                    else:
+                        # Read in the line, strip space and convert to integer 
+                        # print('Read Line #{} with sites: {}'.format(line_count, line))
+                        sites = line.split(' ')
+                        sites = [int(site.strip()) for site in sites]
+                        p, q = sites
+                        # print('Sites {} and {} connected? {}'.format(p, q, self.connected(p, q)))
+                        if not self.connected(p, q):
+                            self.union(p, q)
+        except IOError as e:
+            print('Error opening file - {}'.format(e))
+            
 
+class PathCompressUnionFind(UnionFindBase):
+    def __init__(self, filename=None):
+        # Need our own load_file to create size array before calling unions
+        self.load_file(filename)
+        
     def __repr__(self):
         return '{}'.format(self.id)
-    
+
+    def connected(self, p, q):
+        return super(PathCompressUnionFind, self).connected(p, q)
+
+    def count(self):
+        return super(PathCompressUnionFind, self).count()
+
     def find_root(self, p):
         ''' Helper function to follow links until root site found.
         Note by definition a root is an entry in the id list whose val == idx
         INPUT: Site identifier p
         RETURNS: Root site 
         '''
-        print('Finding Root for site idx {}, ids = {}'.format(p, self.id))
         p_idx = p
         while self.id[p_idx] != p_idx:
-            print(' * {} -> {}'.format(p_idx, self.id[p_idx]))
+            # print(' * {} -> {}'.format(p_idx, self.id[p_idx]))
             p_idx = self.id[p_idx]
+            self.id[p_idx] = self.id[self.id[p_idx]]
         
         p_root = p_idx
-        
-        print('Found Root site: {} for {}'.format(p_root, p))
         p_idx = p
-        # Extra loop to connect all visited nodes to the root
+        
+        # 2-pass to point all p_idx's children to p_idx
         while self.id[p_idx] != p_idx:
-            print(' * {} -> {} (root)'.format(p_idx, self.id[p_idx]))
+            # print(' * {} -> {}'.format(p_idx, self.id[p_idx]))
             p_idx = self.id[p_idx]
             self.id[p_idx] = p_root
 
-        return p_root
+        return p_idx
 
     def union(self, p, q):
         '''
@@ -556,23 +318,16 @@ class PathCompressWeightedQuickUnionUnionFind(BookUnionFind):
         INPUT: Site identifiers p and q
         RETURNS: None
         '''
-        print('Union of sites {} and {}'.format(p, q))
-
         p_root = self.find_root(p)
         q_root = self.find_root(q)
 
-        print('Union pre  self.id: {}'.format(self.id))
-        # This is where the magic weighting happens
-        # self.id[p_root] = q_root<- standard quick-union
-        if self.sz[p_root] < self.sz[p_root]:
+        if self.sz[p_root] < self.sz[q_root]:
             self.id[p_root] = q_root
-            self.sz[p_root] += self.sz[q_root]
+            self.sz[q_root] += self.sz[p_root]
         else:
             self.id[q_root] = p_root
-            self.sz[q_root] += self.sz[p_root]
-        
+            self.sz[p_root] += self.sz[q_root]
         self.N -= 1
-        print('Union post self.id: {}'.format(self.id))
         
     def find(self, p):
         '''
@@ -581,82 +336,63 @@ class PathCompressWeightedQuickUnionUnionFind(BookUnionFind):
         INPUT: Site p
         RETURNS: Component ID
         '''
-        print('Find of site {} = {}'.format(p, self.id[p]))
-        print(self.id)
-        
         p_root = self.find_root(p)
-        print('Found root of {} at {}'.format(p, p_root))
         return p_root
-        
-    def connected(self, p, q):
+
+    def load_file(self, filename):
         '''
-        Returns True if p and q are in the same component
-        INPUT: Nodes p and q
-        RETURNS: Boolean showing if the nodes are connected
+        Load data in file into union-find structure
+        INPUT: string with filename to be loaded
+        RETURNS: Nothing
         '''
-        # print('Super connected for {} and {}'.format(p, q))
-        return self.find(p) == self.find(q) # 2 array accesses
+        assert filename is not None, 'Error - please specify a file to load'
 
-    def count(self):
-        '''
-        Returns number of components (not sites)
-        INPUT: 
-        RETURNS: Integer with number of components
-        '''
-        # print('Super count returning {}'.format(self.N))
-        return self.N
-
+        line_count = 0
+        try:
+            with open(filename, 'r') as f:
+                for line in f:
+                    line_count += 1
+                    
+                    # Create new Union-Find using N on first line of file
+                    if line_count == 1:
+                        N = int(line)
+                        self.N = N
+                        self.id = list(range(N))
+                        self.sz = [1 for _ in range(self.N)] # Weighing needs a size array too
+                        # print('Creating Union find with {} sites'.format(self.N))
     
-def test_tinyUF():
-    tiny_file = 'data/tinyUF.txt'
-    
-    # quick_find = QuickFindUnionFind(tiny_file)
-    # print('Quick-find result: {}'.format(quick_find))
-    # assert quick_find.id == [1,1,1,8,8,1,1,1,8,8]
-    # assert quick_find.count() == 2
-
-    # union_find = QuickUnionUnionFind(tiny_file)
-    # print('Union-find result: {}'.format(union_find))
-    # assert union_find.id == [1,1,1,8,3,0,5,1,8,8]
-    # assert union_find.count() == 2
-
-    # union_find = WeightedQuickUnionUnionFind(tiny_file)
-    # print('Weighted Union-find result: {}'.format(union_find))
-    # print('Size of trees:              {}'.format(union_find.sz))
-    # assert union_find.id == [1,1,1,8,3,0,5,1,8,8]
-    # assert union_find.count() == 2
-
-    union_find = PathCompressWeightedQuickUnionUnionFind(tiny_file)
-    print('Path compress weighted union-find result: {}'.format(union_find))
-    print('Size of trees:                            {}'.format(union_find.sz))
-    print(union_find.count())
-    # assert union_find.id == [1,1,1,8,3,0,5,1,8,8]
-
-
-def test_naive_union_find(filename=None):
-    
-    if filename is None:
-        filename = DEF_FILE
-    
-    line_count = 0
-    with open(filename, 'r') as f:
-        for line in f:
-            line_count += 1
+                    else:
+                        # Read in the line, strip space and convert to integer 
+                        # print('Read Line #{} with sites: {}'.format(line_count, line))
+                        sites = line.split(' ')
+                        sites = [int(site.strip()) for site in sites]
+                        p, q = sites
+                        # print('Sites {} and {} connected? {}'.format(p, q, self.connected(p, q)))
+                        if not self.connected(p, q):
+                            self.union(p, q)
+                            
+        except IOError as e:
+            print('Error opening file - {}'.format(e))
             
-            # Create new Union-Find using N on first line of file
-            if line_count == 1:
-                N = int(line)
-                print('Read init line to create {} sites'.format(N))
-                union_find = NaiveUnionFind(N)
-            else:
-                # Read in the line, strip space and convert to integer 
-                print('Read Line #{} with sites: {}'.format(line_count, line))
-                sites = line.split(' ')
-                sites = [int(site.strip()) for site in sites]
-                union_find.union(sites[0], sites[1])
-                print(union_find)
 
-    print(union_find)
+    
+def test_union_find(filename, expected):
+
+    quick_find = QuickFind(filename)
+    actual = quick_find.count()
+    assert actual == expected, print('QuickFind expected {}, got {}'.format(expected, actual))
+
+    union_find = QuickUnion(filename)
+    actual = union_find.count()
+    assert actual == expected, print('QuickUnion expected {}, got {}'.format(expected, actual))
+
+    union_find = WeightedQuickUnion(filename)
+    actual = union_find.count()
+    assert actual == expected, print('WeightedQuickUnion expected {}, got {}'.format(expected, actual))
+
+    union_find = PathCompressUnionFind(filename)
+    actual = union_find.count()
+    assert actual == expected, print('PathCompressUnionFind expected {}, got {}'.format(expected, actual))
 
 def main(argv=None):
     '''
@@ -668,8 +404,16 @@ def main(argv=None):
     '''
     # print(timeit.repeat(test_naive_union_find, number=1000))
 
-    test_tinyUF()
+    DIR = 'data/'
+    test_dict = {'tinyUF.txt' : 2,
+                 'mediumUF.txt' : 3,
+                 'largeUF.txt' : 6}
     
+    for file, exp in test_dict.items():
+        print('Testing file {}'.format(file))
+        test_union_find(DIR + file, exp)
+
+
     return 0
         
 if __name__ == '__main__':
