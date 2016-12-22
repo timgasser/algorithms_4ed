@@ -3,7 +3,7 @@
 # Needed to get command line arguments
 import sys 
 
-import timeit
+from timeit import Timer
 
 class UnionFindBase(object):
     ''' Superclass with common functionality of all Union Find algos in book'''
@@ -274,7 +274,6 @@ class WeightedQuickUnion(UnionFindBase):
         except IOError as e:
             print('Error opening file - {}'.format(e))
             
-
 class PathCompressUnionFind(UnionFindBase):
     def __init__(self, filename=None):
         # Need our own load_file to create size array before calling unions
@@ -374,8 +373,6 @@ class PathCompressUnionFind(UnionFindBase):
         except IOError as e:
             print('Error opening file - {}'.format(e))
             
-
-    
 def test_union_find(filename, expected):
 
     quick_find = QuickFind(filename)
@@ -394,6 +391,8 @@ def test_union_find(filename, expected):
     actual = union_find.count()
     assert actual == expected, print('PathCompressUnionFind expected {}, got {}'.format(expected, actual))
 
+
+
 def main(argv=None):
     '''
     Function called to run main script including unit tests
@@ -404,15 +403,93 @@ def main(argv=None):
     '''
     # print(timeit.repeat(test_naive_union_find, number=1000))
 
-    DIR = 'data/'
-    test_dict = {'tinyUF.txt' : 2,
-                 'mediumUF.txt' : 3,
-                 'largeUF.txt' : 6}
+    # DIR = 'data/'
+    # test_dict = {'tinyUF.txt' : 2,
+    #              'mediumUF.txt' : 3,
+    #              'largeUF.txt' : 6}
     
-    for file, exp in test_dict.items():
-        print('Testing file {}'.format(file))
-        test_union_find(DIR + file, exp)
+    # for file, exp in test_dict.items():
+    #     print('Testing file {}'.format(file))
+    #     test_union_find(DIR + file, exp)
 
+    tiny_times = dict()
+    algos = ('QuickFind', 'QuickUnion', 'WeightedQuickUnion', 'PathCompressUnionFind')
+    files = ('mediumUF.txt',)
+    NUM_RUNS = 10
+    
+    # for algo in algos:
+    #     for file in files:
+    #         function = '"' + algo + "('data/" + file + "')" + '"'
+    #         imports = '"from __main__ import ' + algo + '"'
+    #         # print('Testing function {}'.format(function))
+    #         print('Command is {} & {}'.format(function, imports))
+            
+    #         t = Timer(function, imports)
+    #         time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    #         print(time)
+
+    
+    # tiny UF  
+    print('\nTiming tinyUF.txt algorithms:')
+    NUM_RUNS = 100
+
+    t = Timer("QuickFind('data/tinyUF.txt')", "from __main__ import QuickFind")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('QuickFind - {}.'.format(time))
+
+    t = Timer("QuickUnion('data/tinyUF.txt')", "from __main__ import QuickUnion")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('QuickUnion - {}.'.format(time))
+
+    t = Timer("WeightedQuickUnion('data/tinyUF.txt')", "from __main__ import WeightedQuickUnion")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('WeightedQuickUnion - {}.'.format(time))
+
+    t = Timer("PathCompressUnionFind('data/tinyUF.txt')", "from __main__ import PathCompressUnionFind")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('PathCompressUnionFind - {}.'.format(time))
+    
+
+    print('\nTiming mediumUF.txt algorithms:')
+    NUM_RUNS = 100
+
+    t = Timer("QuickFind('data/mediumUF.txt')", "from __main__ import QuickFind")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('QuickFind - {}.'.format(time))
+
+    t = Timer("QuickUnion('data/mediumUF.txt')", "from __main__ import QuickUnion")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('QuickUnion - {}.'.format(time))
+
+    t = Timer("WeightedQuickUnion('data/mediumUF.txt')", "from __main__ import WeightedQuickUnion")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('WeightedQuickUnion - {}.'.format(time))
+
+    t = Timer("PathCompressUnionFind('data/mediumUF.txt')", "from __main__ import PathCompressUnionFind")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('PathCompressUnionFind - {}.'.format(time))
+
+
+    print('\nTiming largeUF.txt algorithms:')
+    NUM_RUNS = 1
+
+    # Had to comment these two out, it runs for 10s of minutes
+    
+    # t = Timer("QuickFind('data/largeUF.txt')", "from __main__ import QuickFind")
+    # time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    # print(time)
+
+    # t = Timer("QuickUnion('data/largeUF.txt')", "from __main__ import QuickUnion")
+    # time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    # print('QuickUnion - {}.'.format(time))
+
+    t = Timer("WeightedQuickUnion('data/largeUF.txt')", "from __main__ import WeightedQuickUnion")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('WeightedQuickUnion - {}.'.format(time))
+
+    t = Timer("PathCompressUnionFind('data/largeUF.txt')", "from __main__ import PathCompressUnionFind")
+    time = t.timeit(number=NUM_RUNS)/NUM_RUNS
+    print('PathCompressUnionFind - {}.'.format(time))
 
     return 0
         
