@@ -64,37 +64,30 @@ class LinkedList(object):
     
     def __init__(self, verbose=False):
         '''Creates a new linked list with no entries initially'''
-        self.tail = LinkedListNode(None, None) # Pointer of None means end of chain
-        self.head = LinkedListNode(None, self.tail)
+        self.first = None
         self.verbose = verbose
 
     def __repr__(self):
         '''Returns a list of all the items in the linked list'''
         items = list()
-        node = self.head.next_node
-        while node is not self.tail:
+        node = self.first
+        while node.item is not None:
             items.append(node.item)
             node = node.next_node
         return str(items)
 
     def push_front(self, item):
         '''Adds an item to the front of the list'''
-        old_first_node = self.head.next_node
-        new_node = LinkedListNode(item, old_first_node)
-        self.head.next_node = new_node
+        old_first = self.first
+        self.first = LinkedListNode(item, old_first)
         if self.verbose: print('After push: {}'.format(self))
 
     def pop_front(self):
         '''Pops the item at the front of the list'''
-        old_first_node = self.head.next_node
-        if old_first_node == self.tail:
-            return None # Nothing to pop if head -> tail, early out
-            
-        old_second_node = old_first_node.next_node
-        self.head.next_node = old_second_node
-        
+        old_first = self.first
+        self.first = old_first.next_node
         if self.verbose: print('After pop : {}'.format(self))
-        return old_first_node.item
+        return old_first.item
 
     def push_back(self, item):
         '''Adds an item to the back of the list'''
@@ -106,9 +99,12 @@ class LinkedList(object):
 
     def size(self):
         ''' Check how many items are in the linked list'''
-        node = self.head
+        if self.first is None:
+            return 0
+        node = self.first
         node_count = 0
-        while node.next_node != self.tail:
+        
+        while node.next_node is not None:
             node_count += 1
             node = node.next_node
         return node_count
@@ -138,8 +134,6 @@ class StackOfStringsLinkedList(StackBase):
     def size(self):
         '''How many items are in the stack'''
         return self.items.size()
-
-
 
 def string_test(stacks):
     '''Runs a stack-of-strings test on the stacks input tuple'''
